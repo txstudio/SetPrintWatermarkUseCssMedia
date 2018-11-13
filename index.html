@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>使用 CSS 設定分頁浮水印的範例頁面</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <style>
+		/* 使用瀏覽器瀏覽時不顯示浮水印 */
+        .watermark {
+            display:none;
+        }
+		
+		/* 
+			進行列印時顯示浮水印並設定位置為 fixed 
+			此範例有額外設定：透明度與旋轉 ... 等屬性
+		*/
+        @media print {
+            .watermark {
+                display: block;
+                position: fixed;
+				width: 100%;
+				font-size: 800%;
+                top: 700px;
+                opacity: 0.3;
+				transform: rotate(-60deg);
+            }
+        }
+    </style>
+</head>
+<body>
+	<!-- 此範例使用文字 (https://blog.txstudio.tw) 作為浮水印 -->
+    <div class="watermark">
+		https://blog.txstudio.tw
+    </div>
+	
+	<div class="container">
+	
+		<div class="alert alert-info">
+			本篇文章來源<br/>
+			https://blog.txstudio.tw/2018/09/columnstore-index-io-performance-improvement.html
+		</div>
+		
+		<h1>資料行存放區索引是如何增加 IO 效能</h1>
+		
+		<p>本文章使用圖解資料行存放區 (columnstore) 資料儲存方式與一般資料表儲存方式 (rowstore) 的差異，呈現在硬碟 IO 效能上的優化</p>
+
+		<blockquote>僅示意，無法代表實際資料表儲存順序百分之百相同</blockquote>
+
+		<p>描述內容有錯誤與不正確的地方可使用下方留言</p>
+
+
+		<h5>文章環境</h5>
+		<dl>
+			<dt>作業系統</dt>
+			<dd>Windows Server 2016 Standard Evaluation (10.0)</dd>
+			<dt>資料庫</dt>
+			<dd>Microsoft SQL Server Enterprise Evaluation (64-bit)</dd>
+		</dl>
+
+		<h5>範例資料表</h5>
+
+		<p>下面將使用 AdventureWorks2017 範例資料庫中 Sales.SalesOrderDetail 資料表作為範例</p>
+
+		<p>資料表查詢結果如下圖</p>
+
+		<img src="https://raw.githubusercontent.com/txstudio/columnstore-index-io-performance-improvement/master/img/select-result.gif" alt=""/>
+
+		<p>接下來就來說明資料列存放區 (rowstore) 與資料行存放區 (columnstore) 的差異</p>
+
+		<h5>資料列存放區 (rowstore)</h5>
+
+		<p>一般情況下資料表在硬碟的方式如下圖</p>
+
+		<img src="https://raw.githubusercontent.com/txstudio/columnstore-index-io-performance-improvement/master/img/row-store-graphic.gif" alt=""/>
+
+		<p>每一個方形代表硬碟儲存區塊，資料依照資料列的順序進行儲存</p>
+
+		<h5>資料行存放區 (columnstore)</h5>
+
+		<p>當資料表變成資料列存放區時，資料的儲存方式如下</p>
+
+		<img src="https://raw.githubusercontent.com/txstudio/columnstore-index-io-performance-improvement/master/img/column-store-graphic.gif" alt=""/>
+
+		<p>每個區塊皆儲存相同資料行的資料內容</p>
+
+		<h5>改成資料行儲存的好處</h5>
+
+		<p>其中一項：可減少檔案 IO 的成本</p>
+
+		<p>我們使用下面查詢取得資料</p>
+
+		<pre><code>SELECT SalesOrderID
+		 ,SalesOrderDetailID
+		 ,CarrierTrackingNumber
+		FROM Sales.SalesOrderDetail</code></pre>
+
+		<p>在資料列存放區，每個區塊都需要被讀取然後才取得查詢結果（黃色底的區塊代表 IO 會存取到的檔案區塊）</p>
+
+		<img src="https://raw.githubusercontent.com/txstudio/columnstore-index-io-performance-improvement/master/img/disk-block-read-in-row-store.gif" alt=""/>
+
+		<p>但在資料行存放區，只需讀取特定欄位 (SalesOrderID,SalesOrderDetailID,CarrierTrackingNumber) 的區塊</p>
+
+		<img src="https://raw.githubusercontent.com/txstudio/columnstore-index-io-performance-improvement/master/img/disk-block-read-in-column-store.gif" alt=""/>
+
+		<blockquote>OrderQty 的區塊並不需要被讀取</blockquote>
+
+		<p>讀取的區塊相較之下變少了，查詢成本相較之下就減少了</p>
+
+		<p>此文章僅說明在 IO 上的成本差異，更多資料行存放區的優缺點煩請參考官方文件</p>
+
+		<p><a href="https://docs.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-overview?view=sql-server-2017" target="_blank">Columnstore indexes: Overview</a></p>
+
+		<h5>參考資料</h5>
+
+		<ul>
+			<li><a href="https://www.youtube.com/watch?v=bytuXFVEDW8" target="_blank">Columnstore index in sql server (tutorial)</a></li>
+			<li><a href="https://docs.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-overview?view=sql-server-2017" target="_blank">Columnstore indexes: Overview</a></li>
+		</ul>
+
+	</div>
+	
+	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+</body>
+</html>
